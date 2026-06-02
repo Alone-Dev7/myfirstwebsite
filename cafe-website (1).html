@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Cafe — Specialty Coffee & Café</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --cream: #F5F0E8; --warm-white: #FBF8F3; --espresso: #1C1410;
+  --dark-brown: #2D1F14; --caramel: #C07A2F; --caramel-light: #E8A84A;
+  --rust: #8B3A1E; --muted: #8A7B6A; --border: rgba(28,20,16,0.12);
+}
+html { scroll-behavior: smooth; }
+body { background: var(--cream); color: var(--espresso); font-family: 'Jost', sans-serif; font-weight: 300; overflow-x: hidden; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 5vw;
+  background: rgba(245,240,232,0.9); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+.nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 600; letter-spacing: 0.12em; color: var(--espresso); text-decoration: none; }
+.nav-logo span { color: var(--caramel); font-style: italic; }
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; text-decoration: none; color: var(--muted); transition: color 0.3s; }
+.nav-links a:hover { color: var(--espresso); }
+.nav-right { display: flex; align-items: center; gap: 1rem; }
+
+/* Language switcher */
+.lang-switcher { display: flex; gap: 2px; border: 1px solid var(--border); padding: 3px; }
+.lang-btn { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; padding: 0.3rem 0.55rem; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.2s; }
+.lang-btn.active { background: var(--espresso); color: var(--cream); }
+.lang-btn:hover:not(.active) { color: var(--espresso); }
+
+/* Cart button */
+.cart-btn {
+  position: relative; background: var(--espresso); color: var(--cream);
+  padding: 0.55rem 1.2rem; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+  border: none; cursor: pointer; display: flex; align-items: center; gap: 0.6rem;
+  transition: background 0.3s; white-space: nowrap;
+}
+.cart-btn:hover { background: var(--caramel); }
+.cart-count {
+  background: var(--caramel); color: var(--espresso); width: 18px; height: 18px;
+  border-radius: 50%; font-size: 0.6rem; font-weight: 400;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s;
+}
+.cart-count.bump { animation: bump 0.3s ease; }
+@keyframes bump { 0%,100%{transform:scale(1)} 50%{transform:scale(1.4)} }
+
+/* ── CART DRAWER ── */
+.cart-overlay {
+  position: fixed; inset: 0; background: rgba(28,20,16,0.5); z-index: 300;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.cart-overlay.open { opacity: 1; pointer-events: all; }
+.cart-drawer {
+  position: fixed; right: 0; top: 0; bottom: 0; width: min(480px, 96vw);
+  background: var(--cream); z-index: 400;
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.4s cubic-bezier(.16,1,.3,1);
+  border-left: 1px solid var(--border);
+}
+.cart-drawer.open { transform: translateX(0); }
+.cart-header {
+  padding: 2rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cart-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 300; }
+.cart-close { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--muted); transition: color 0.2s; line-height: 1; }
+.cart-close:hover { color: var(--espresso); }
+.cart-items { flex: 1; overflow-y: auto; padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1rem; }
+.cart-empty { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+.cart-empty-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; opacity: 0.4; }
+.cart-empty p { font-size: 0.85rem; line-height: 1.7; }
+.cart-item {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem; border: 1px solid var(--border); background: var(--warm-white);
+}
+.cart-item-icon { font-size: 1.6rem; flex-shrink: 0; width: 44px; text-align: center; }
+.cart-item-info { flex: 1; min-width: 0; }
+.cart-item-name { font-size: 0.88rem; color: var(--espresso); margin-bottom: 0.2rem; }
+.cart-item-price { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--caramel); }
+.cart-item-qty { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.qty-btn { width: 26px; height: 26px; border: 1px solid var(--border); background: none; cursor: pointer; font-size: 1rem; color: var(--espresso); display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.qty-btn:hover { background: var(--espresso); color: var(--cream); }
+.qty-num { font-family: 'DM Mono', monospace; font-size: 0.78rem; min-width: 1.2rem; text-align: center; }
+.cart-footer { padding: 1.5rem 2rem; border-top: 1px solid var(--border); background: var(--warm-white); }
+.cart-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.cart-total-label { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.cart-total-amount { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 300; color: var(--espresso); }
+
+/* Order form inside cart */
+.cart-form { display: flex; flex-direction: column; gap: 0.6rem; }
+.cart-input {
+  padding: 0.75rem 0.9rem; border: 1px solid var(--border);
+  background: var(--cream); color: var(--espresso);
+  font-family: 'Jost', sans-serif; font-size: 0.82rem;
+  outline: none; transition: border-color 0.2s;
+}
+.cart-input::placeholder { color: var(--muted); }
+.cart-input:focus { border-color: var(--caramel); }
+.cart-submit {
+  padding: 1rem; background: var(--caramel); border: none;
+  color: var(--espresso); font-family: 'Jost', sans-serif; font-size: 0.72rem;
+  letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer;
+  transition: background 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+.cart-submit:hover { background: var(--caramel-light); }
+.cart-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.order-note { font-size: 0.65rem; color: var(--muted); text-align: center; margin-top: 0.5rem; font-family: 'DM Mono', monospace; letter-spacing: 0.1em; }
+
+/* Success toast */
+.toast {
+  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+  background: var(--espresso); color: var(--cream);
+  padding: 1rem 2rem; font-size: 0.8rem; letter-spacing: 0.1em;
+  z-index: 999; transition: transform 0.4s cubic-bezier(.16,1,.3,1);
+  display: flex; align-items: center; gap: 0.8rem; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast-icon { font-size: 1.1rem; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr;
+  padding-top: 72px; overflow: hidden;
+}
+.hero-left { display: flex; flex-direction: column; justify-content: center; padding: 8vh 5vw 8vh 8vw; }
+.hero-tag { font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--caramel); margin-bottom: 1.8rem; display: flex; align-items: center; gap: 1rem; }
+.hero-tag::before { content: ''; display: block; width: 2.5rem; height: 1px; background: var(--caramel); }
+.hero-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(3.2rem, 5.5vw, 5.5rem); font-weight: 300; line-height: 1.05; color: var(--espresso); margin-bottom: 2rem; }
+.hero-title em { font-style: italic; color: var(--caramel); }
+.hero-subtitle { font-size: 0.9rem; line-height: 1.85; color: var(--muted); max-width: 36ch; margin-bottom: 3rem; }
+.hero-actions { display: flex; gap: 1.2rem; align-items: center; }
+.btn-primary { background: var(--espresso); color: var(--cream); padding: 0.9rem 2.2rem; text-decoration: none; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; transition: background 0.3s, transform 0.2s; display: inline-block; }
+.btn-primary:hover { background: var(--rust); transform: translateY(-1px); }
+.btn-ghost { color: var(--espresso); text-decoration: none; font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid var(--border); padding-bottom: 2px; transition: color 0.3s, border-color 0.3s; }
+.btn-ghost:hover { color: var(--caramel); border-color: var(--caramel); }
+.hero-right { position: relative; background: var(--dark-brown); overflow: hidden; }
+.hero-image-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 60%, rgba(192,122,47,0.25) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(139,58,30,0.2) 0%, transparent 50%), linear-gradient(160deg, #2D1F14 0%, #1C1410 100%); }
+.hero-coffee-art { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.coffee-circle { width: min(65%, 400px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #6B4226 0%, #4A2D18 35%, #2D1A0E 70%, #1A0F07 100%); position: relative; box-shadow: 0 0 120px rgba(192,122,47,0.15), inset 0 0 60px rgba(0,0,0,0.5); }
+.coffee-circle::after { content: ''; position: absolute; inset: 8%; border-radius: 50%; background: radial-gradient(circle at 40% 38%, rgba(192,122,47,0.5) 0%, rgba(120,70,20,0.3) 40%, transparent 70%); }
+.coffee-latte-art { position: absolute; inset: 18%; border-radius: 50%; background: radial-gradient(ellipse at 42% 40%, rgba(230,180,100,0.9) 0%, rgba(200,140,60,0.6) 30%, transparent 65%); }
+.hero-stats { position: absolute; bottom: 3rem; left: 3rem; right: 3rem; display: flex; gap: 2rem; }
+.stat { color: var(--cream); border-left: 1px solid rgba(245,240,232,0.2); padding-left: 1.2rem; }
+.stat-num { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; color: var(--caramel-light); line-height: 1; }
+.stat-label { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,232,0.5); margin-top: 0.3rem; }
+.hero-scroll-hint { position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; animation: float 2.5s ease-in-out infinite; }
+.hero-scroll-hint svg { opacity: 0.4; }
+@keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
+
+/* ── TICKER ── */
+.ticker { background: var(--espresso); color: var(--cream); padding: 0.85rem 0; overflow: hidden; border-top: 1px solid rgba(255,255,255,0.06); }
+.ticker-track { display: flex; animation: ticker 28s linear infinite; width: max-content; }
+.ticker-item { display: flex; align-items: center; gap: 2rem; padding: 0 2.5rem; font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,240,232,0.55); white-space: nowrap; }
+.ticker-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--caramel); flex-shrink: 0; }
+@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* ── SECTIONS ── */
+section { padding: 8rem 8vw; }
+.section-header { margin-bottom: 5rem; }
+.section-tag { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--caramel); margin-bottom: 0.8rem; }
+.section-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem, 4vw, 3.5rem); font-weight: 300; line-height: 1.1; color: var(--espresso); }
+.section-title em { font-style: italic; color: var(--caramel); }
+
+/* ── MENU ── */
+.menu { background: var(--warm-white); }
+.menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.menu-card { background: var(--cream); padding: 2rem 1.8rem; transition: background 0.3s; position: relative; overflow: hidden; cursor: pointer; user-select: none; }
+.menu-card.in-cart { outline: 2px solid var(--caramel); }
+.menu-card:hover { background: var(--espresso); }
+.menu-card:hover .menu-card-name, .menu-card:hover .menu-card-desc { color: var(--cream); }
+.menu-card:hover .menu-card-price { color: var(--caramel-light); }
+.menu-card-icon { font-size: 1.8rem; margin-bottom: 1.2rem; display: block; transition: transform 0.3s; }
+.menu-card:hover .menu-card-icon { transform: scale(1.1); }
+.menu-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 400; color: var(--espresso); margin-bottom: 0.5rem; transition: color 0.3s; }
+.menu-card-desc { font-size: 0.78rem; line-height: 1.7; color: var(--muted); margin-bottom: 1.2rem; transition: color 0.3s; }
+.menu-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.menu-card-price { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--caramel); letter-spacing: 0.1em; transition: color 0.3s; }
+.add-to-cart-btn {
+  font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 0.35rem 0.8rem;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; transition: all 0.2s;
+  font-family: 'Jost', sans-serif;
+}
+.menu-card:hover .add-to-cart-btn { border-color: rgba(245,240,232,0.3); color: rgba(245,240,232,0.7); }
+.menu-card:hover .add-to-cart-btn:hover { background: var(--caramel); border-color: var(--caramel); color: var(--espresso); }
+.add-to-cart-btn:hover { background: var(--espresso); border-color: var(--espresso); color: var(--cream); }
+.menu-card-badge { position: absolute; top: 1rem; right: 1rem; background: var(--caramel); color: var(--cream); font-size: 0.52rem; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.22rem 0.55rem; }
+
+/* ── DELIVERY ── */
+.delivery { background: var(--espresso); color: var(--cream); padding: 8rem 8vw; }
+.delivery .section-title { color: var(--cream); }
+.delivery .section-tag { color: var(--caramel-light); }
+.delivery-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 8rem; align-items: start; }
+.delivery-lead { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-style: italic; color: rgba(245,240,232,0.65); line-height: 1.8; margin-bottom: 3rem; max-width: 40ch; }
+.delivery-features { display: flex; flex-direction: column; }
+.delivery-feature { display: flex; gap: 1.5rem; align-items: flex-start; padding: 1.5rem 0; border-bottom: 1px solid rgba(245,240,232,0.08); }
+.feature-num { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--caramel); letter-spacing: 0.15em; padding-top: 0.15rem; flex-shrink: 0; width: 2rem; }
+.feature-text h4 { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cream); margin-bottom: 0.4rem; }
+.feature-text p { font-size: 0.8rem; line-height: 1.7; color: rgba(245,240,232,0.45); }
+.delivery-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(245,240,232,0.08); padding: 2.5rem; }
+.delivery-panel h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 300; color: var(--cream); margin-bottom: 1rem; }
+.delivery-panel-note { font-size: 0.75rem; color: rgba(245,240,232,0.4); margin-bottom: 2rem; line-height: 1.6; }
+.time-slots { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.5rem; margin-bottom: 1.5rem; }
+.time-slot { padding: 0.65rem; text-align: center; border: 1px solid rgba(245,240,232,0.1); font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em; color: rgba(245,240,232,0.5); transition: all 0.2s; cursor: pointer; }
+.time-slot:hover, .time-slot.active { background: var(--caramel); color: var(--espresso); border-color: var(--caramel); }
+.open-cart-big { width: 100%; padding: 1rem; background: var(--caramel); border: none; color: var(--espresso); font-family: 'Jost', sans-serif; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: background 0.3s; margin-top: 1rem; }
+.open-cart-big:hover { background: var(--caramel-light); }
+
+/* ── ABOUT ── */
+.about-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 6rem; align-items: start; }
+.about-visual { position: relative; aspect-ratio: 3/4; background: var(--dark-brown); overflow: hidden; }
+.about-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 40% 50%, rgba(192,122,47,0.3) 0%, transparent 65%), linear-gradient(180deg, #3D2B1A 0%, #1C1410 100%); }
+.about-accent { position: absolute; bottom: 0; left: 0; right: 0; padding: 2rem; font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; font-style: italic; color: rgba(245,240,232,0.4); line-height: 1.6; }
+.about-body { font-size: 1rem; line-height: 2; color: var(--muted); margin-bottom: 3rem; }
+.about-body strong { color: var(--espresso); font-weight: 400; }
+.values { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.value { padding: 1.5rem; border: 1px solid var(--border); }
+.value h4 { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--caramel); margin-bottom: 0.6rem; }
+.value p { font-size: 0.82rem; line-height: 1.7; color: var(--muted); }
+
+/* ── TESTIMONIALS ── */
+.testimonials { background: var(--dark-brown); color: var(--cream); }
+.testimonials .section-title { color: var(--cream); }
+.testimonials .section-tag { color: var(--caramel-light); }
+.reviews-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-top: 4rem; }
+.review { background: rgba(255,255,255,0.04); padding: 2.5rem 2rem; border: 1px solid rgba(245,240,232,0.06); }
+.review-stars { color: var(--caramel); margin-bottom: 1.5rem; letter-spacing: 0.1em; }
+.review-text { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-style: italic; font-weight: 300; line-height: 1.7; color: rgba(245,240,232,0.8); margin-bottom: 1.5rem; }
+.review-author { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,240,232,0.35); }
+
+/* ── FOOTER ── */
+footer { background: #100C09; color: var(--cream); padding: 5rem 8vw 2.5rem; }
+.footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4rem; margin-bottom: 4rem; padding-bottom: 4rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.footer-logo { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; letter-spacing: 0.08em; color: var(--cream); margin-bottom: 1rem; display: block; }
+.footer-logo span { color: var(--caramel); font-style: italic; }
+.footer-tagline { font-size: 0.82rem; color: rgba(245,240,232,0.35); line-height: 1.7; max-width: 28ch; }
+.footer-col h5 { font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(245,240,232,0.35); margin-bottom: 1.5rem; }
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+.footer-col ul li a { font-size: 0.82rem; color: rgba(245,240,232,0.55); text-decoration: none; transition: color 0.2s; }
+.footer-col ul li a:hover { color: var(--caramel-light); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; }
+.footer-copy { font-size: 0.68rem; color: rgba(245,240,232,0.2); letter-spacing: 0.1em; }
+.footer-legal { display: flex; gap: 2rem; }
+.footer-legal a { font-size: 0.68rem; color: rgba(245,240,232,0.2); text-decoration: none; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+.hero-tag { animation: fadeUp 0.8s ease both 0.1s; }
+.hero-title { animation: fadeUp 0.8s ease both 0.2s; }
+.hero-subtitle { animation: fadeUp 0.8s ease both 0.35s; }
+.hero-actions { animation: fadeUp 0.8s ease both 0.5s; }
+
+/* EmailJS config note */
+.emailjs-notice { font-size: 0.65rem; color: rgba(245,240,232,0.25); text-align: center; margin-top: 0.5rem; font-family: 'DM Mono', monospace; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+
+<!-- ── CART OVERLAY & DRAWER ── -->
+<div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h2 id="cartTitle">Your Order</h2>
+    <button class="cart-close" onclick="closeCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty">
+      <span class="cart-empty-icon">☕</span>
+      <p id="cartEmptyText">Your cart is empty.<br>Add items from the menu.</p>
+    </div>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-total-row">
+      <div class="cart-total-label" id="totalLabel">Total</div>
+      <div class="cart-total-amount" id="cartTotal">£0.00</div>
+    </div>
+    <div class="cart-form">
+      <input class="cart-input" id="customerName" type="text" placeholder="Your name">
+      <input class="cart-input" id="customerEmail" type="email" placeholder="Your email">
+      <input class="cart-input" id="customerAddress" type="text" placeholder="Delivery address">
+      <input class="cart-input" id="customerPhone" type="tel" placeholder="Phone number">
+      <button class="cart-submit" id="placeOrderBtn" onclick="placeOrder()">
+        <span id="orderBtnText">Place Order</span>
+      </button>
+      <p class="emailjs-notice" id="emailjsNotice">⚙ Connect EmailJS: set SERVICE_ID, TEMPLATE_ID &amp; PUBLIC_KEY in the script below</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastMsg">Order placed! Check your email for confirmation.</span>
+</div>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="nav-logo">brûlée<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="#menu" data-i18n="nav.menu">Menu</a></li>
+    <li><a href="#delivery" data-i18n="nav.delivery">Delivery</a></li>
+    <li><a href="#about" data-i18n="nav.about">Our Story</a></li>
+    <li><a href="#contact" data-i18n="nav.visit">Visit Us</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('tr')">TR</button>
+      <button class="lang-btn" onclick="setLang('tk')">TK</button>
+    </div>
+    <button class="cart-btn" onclick="openCart()">
+      <span data-i18n="nav.cart">Cart</span>
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag" data-i18n="hero.tag">Est. 2018 · Specialty Coffee</div>
+    <h1 class="hero-title" data-i18n-html="hero.title">Coffee as it<br>was <em>meant</em><br>to be.</h1>
+    <p class="hero-subtitle" data-i18n="hero.subtitle">Single-origin espresso, handcrafted pastries, and a space that feels like a pause in the noise of the day. Now delivering to your door.</p>
+    <div class="hero-actions">
+      <a href="#menu" class="btn-primary" data-i18n="hero.cta1">Explore the Menu</a>
+      <a href="#delivery" class="btn-ghost" data-i18n="hero.cta2">Order Delivery →</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-image-bg"></div>
+    <div class="hero-coffee-art">
+      <div class="coffee-circle"><div class="coffee-latte-art"></div></div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">47</div><div class="stat-label" data-i18n="hero.stat1">Origins sourced</div></div>
+      <div class="stat"><div class="stat-num">2.4k</div><div class="stat-label" data-i18n="hero.stat2">Daily cups poured</div></div>
+      <div class="stat"><div class="stat-num">30'</div><div class="stat-label" data-i18n="hero.stat3">Avg. delivery time</div></div>
+    </div>
+  </div>
+  <div class="hero-scroll-hint">
+    <span data-i18n="hero.scroll">Scroll</span>
+    <svg width="12" height="20" viewBox="0 0 12 20" fill="none"><rect x="1" y="1" width="10" height="18" rx="5" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6" r="1.5" fill="currentColor"/></svg>
+  </div>
+</section>
+
+<!-- ── TICKER ── -->
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<!-- ── MENU ── -->
+<section class="menu" id="menu">
+  <div class="section-header">
+    <div class="section-tag" data-i18n="menu.tag">What we serve</div>
+    <h2 class="section-title" data-i18n-html="menu.title">The <em>craft</em> in every cup</h2>
+  </div>
+  <div class="menu-grid" id="menuGrid"></div>
+</section>
+
+<!-- ── DELIVERY ── -->
+<section class="delivery" id="delivery">
+  <div class="delivery-layout">
+    <div>
+      <div class="section-header" style="margin-bottom:3rem">
+        <div class="section-tag" data-i18n="delivery.tag">Door-to-door</div>
+        <h2 class="section-title" data-i18n-html="delivery.title">Brûlée,<br><em>delivered</em>.</h2>
+      </div>
+      <p class="delivery-lead" data-i18n="delivery.lead">The café experience shouldn't stop at our door. Your coffee travels in thermally insulated packaging, poured just minutes before it leaves us.</p>
+      <div class="delivery-features" id="deliveryFeatures"></div>
+    </div>
+    <div>
+      <div class="delivery-panel">
+        <h3 data-i18n="delivery.panel.title">Place your order</h3>
+        <p class="delivery-panel-note" data-i18n="delivery.panel.note">Choose a delivery slot and click the button to open your cart and complete the order.</p>
+        <div class="time-slots" id="timeSlots"></div>
+        <button class="open-cart-big" onclick="openCart()" data-i18n="delivery.panel.btn">Open cart &amp; order →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ABOUT ── -->
+<section id="about">
+  <div class="about-layout">
+    <div>
+      <div class="about-visual">
+        <div class="about-bg"></div>
+        <div class="about-accent" data-i18n="about.quote">"Coffee is a conversation between the farmer, the roaster, and the barista. We're just the last chapter."</div>
+      </div>
+    </div>
+    <div class="about-content">
+      <div class="section-header" style="margin-bottom:2.5rem">
+        <div class="section-tag" data-i18n="about.tag">Our story</div>
+        <h2 class="section-title" data-i18n-html="about.title">A café <em>with conviction</em></h2>
+      </div>
+      <p class="about-body" data-i18n-html="about.body">Brûlée was founded on the belief that <strong>excellent coffee is not a luxury</strong> — it's what happens when you care about every link in the chain. We work directly with twelve farms across Ethiopia, Colombia, and Guatemala, visiting each harvest and paying a price that reflects the artistry involved.<br><br>Our head roaster, <strong>Mia Takahari</strong>, trained in Tokyo and Melbourne before arriving here in 2017. Every roast profile is developed over weeks, then validated by a panel of six in-house tasters. Nothing reaches the bar without unanimous approval.<br><br>The café itself was designed to disappear behind the coffee — no loud music, no Instagram traps, just light, warmth, and the smell of something good.</p>
+      <div class="values" id="valuesGrid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TESTIMONIALS ── -->
+<section class="testimonials" id="contact">
+  <div class="section-header">
+    <div class="section-tag" data-i18n="testimonials.tag">What people say</div>
+    <h2 class="section-title" data-i18n-html="testimonials.title">We let the coffee <em>speak</em></h2>
+  </div>
+  <div class="reviews-grid" id="reviewsGrid"></div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-top">
+    <div>
+      <span class="footer-logo">brûlée<span>.</span></span>
+      <p class="footer-tagline" data-i18n="footer.tagline">Specialty coffee and café, crafted for people who believe mornings deserve better.</p>
+    </div>
+    <div class="footer-col">
+      <h5 data-i18n="footer.visit">Visit</h5>
+      <ul>
+        <li><a href="#">12 Rowan Mews</a></li>
+        <li><a href="#">London, E1 6RF</a></li>
+        <li><a href="#" data-i18n="footer.weekdays">Mon–Fri 7am–7pm</a></li>
+        <li><a href="#" data-i18n="footer.weekends">Sat–Sun 8am–9pm</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5 data-i18n="footer.menu">Menu</h5>
+      <ul>
+        <li><a href="#" data-i18n="footer.coffee">Coffee</a></li>
+        <li><a href="#" data-i18n="footer.tea">Tea &amp; Matcha</a></li>
+        <li><a href="#" data-i18n="footer.pastries">Pastries</a></li>
+        <li><a href="#" data-i18n="footer.food">Food</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5 data-i18n="footer.company">Company</h5>
+      <ul>
+        <li><a href="#" data-i18n="footer.story">Our Story</a></li>
+        <li><a href="#" data-i18n="footer.wholesale">Wholesale</a></li>
+        <li><a href="#" data-i18n="footer.careers">Careers</a></li>
+        <li><a href="#" data-i18n="footer.press">Press</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy" data-i18n="footer.copy">© 2026 Brûlée Coffee Ltd. All rights reserved.</div>
+    <div class="footer-legal">
+      <a href="#" data-i18n="footer.privacy">Privacy</a>
+      <a href="#" data-i18n="footer.terms">Terms</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════
+   EMAILJS CONFIGURATION
+   1. Sign up at https://www.emailjs.com (free)
+   2. Create a service (Gmail, Outlook, etc.)
+   3. Create an email template with these variables:
+      {{customer_name}}, {{customer_email}},
+      {{customer_address}}, {{customer_phone}},
+      {{order_items}}, {{order_total}}, {{delivery_slot}}
+   4. Replace the three values below
+═══════════════════════════════════════════════ */
+const EMAILJS_SERVICE_ID  = 'service_s6xtgoy';   // e.g. 'service_abc123'
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // e.g. 'template_xyz789'
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // e.g. 'user_ABCDEFGHIJ'
+
+/* ═══════════════════════════════════════════════
+   TRANSLATIONS
+═══════════════════════════════════════════════ */
+const i18n = {
+  en: {
+    'nav.menu': 'Menu', 'nav.delivery': 'Delivery', 'nav.about': 'Our Story', 'nav.visit': 'Visit Us', 'nav.cart': 'Cart',
+    'hero.tag': 'Est. 2018 · Specialty Coffee',
+    'hero.title': 'Coffee as it<br>was <em>meant</em><br>to be.',
+    'hero.subtitle': 'Single-origin espresso, handcrafted pastries, and a space that feels like a pause in the noise of the day. Now delivering to your door.',
+    'hero.cta1': 'Explore the Menu', 'hero.cta2': 'Order Delivery →',
+    'hero.stat1': 'Origins sourced', 'hero.stat2': 'Daily cups poured', 'hero.stat3': 'Avg. delivery time',
+    'hero.scroll': 'Scroll',
+    'menu.tag': 'What we serve', 'menu.title': 'The <em>craft</em> in every cup',
+    'menu.add': 'Add to cart', 'menu.added': 'Added ✓',
+    'delivery.tag': 'Door-to-door', 'delivery.title': 'Brûlée,<br><em>delivered</em>.',
+    'delivery.lead': "The café experience shouldn't stop at our door. Your coffee travels in thermally insulated packaging, poured just minutes before it leaves us.",
+    'delivery.panel.title': 'Place your order', 'delivery.panel.note': 'Choose a delivery slot and click the button to open your cart and complete the order.',
+    'delivery.panel.btn': 'Open cart & order →',
+    'delivery.f1.title': '30-minute guarantee', 'delivery.f1.body': "We dispatch within 5 minutes of your order and track every run. If we're late, your next drink is on us.",
+    'delivery.f2.title': 'Thermal preservation', 'delivery.f2.body': 'Custom-designed cups with double-wall vacuum insulation keep your coffee at serving temperature for 45 minutes.',
+    'delivery.f3.title': 'Zero-waste packaging', 'delivery.f3.body': 'Fully compostable bags, plant-based cups, and a monthly bag collection service for your packaging returns.',
+    'delivery.f4.title': 'Live order tracking', 'delivery.f4.body': 'Real-time map updates from the moment your order is prepared to the second it arrives at your address.',
+    'about.tag': 'Our story', 'about.title': 'A café <em>with conviction</em>',
+    'about.quote': '"Coffee is a conversation between the farmer, the roaster, and the barista. We\'re just the last chapter."',
+    'about.body': 'Brûlée was founded on the belief that <strong>excellent coffee is not a luxury</strong> — it\'s what happens when you care about every link in the chain. We work directly with twelve farms across Ethiopia, Colombia, and Guatemala, visiting each harvest and paying a price that reflects the artistry involved.<br><br>Our head roaster, <strong>Mia Takahari</strong>, trained in Tokyo and Melbourne before arriving here in 2017. Every roast profile is developed over weeks, then validated by a panel of six in-house tasters.<br><br>The café itself was designed to disappear behind the coffee — no loud music, no Instagram traps, just light, warmth, and the smell of something good.',
+    'about.v1.title': 'Direct trade', 'about.v1.body': 'Every farm partner receives above Fair Trade premiums and we publish our pricing annually.',
+    'about.v2.title': 'Seasonal roasting', 'about.v2.body': 'We rotate our espresso blend quarterly to showcase the best of each harvest as it arrives.',
+    'about.v3.title': 'Living wages', 'about.v3.body': 'All staff earn at minimum 125% of the London Living Wage, with profit-sharing from year one.',
+    'about.v4.title': 'Net zero by 2026', 'about.v4.body': 'Electric delivery fleet, 100% renewable electricity, and an offset programme for unavoidable emissions.',
+    'testimonials.tag': 'What people say', 'testimonials.title': 'We let the coffee <em>speak</em>',
+    'review1.text': '"The flat white I had last Tuesday ruined all other flat whites for me. I\'ve been back four times this week and I have no regrets whatsoever."', 'review1.author': '— Sophie A., Verified Order',
+    'review2.text': '"Delivery arrived before I\'d finished the confirmation email. Coffee was still at the perfect temperature. This is genuinely extraordinary logistics."', 'review2.author': '— Marcus L., Delivery Customer',
+    'review3.text': '"I\'ve been a morning coffee person for twenty years. Brûlée\'s orange blossom latte made me question all of my previous choices."', 'review3.author': '— Priya M., Regular Guest',
+    'footer.tagline': 'Specialty coffee and café, crafted for people who believe mornings deserve better.',
+    'footer.visit': 'Visit', 'footer.menu': 'Menu', 'footer.company': 'Company',
+    'footer.weekdays': 'Mon–Fri 7am–7pm', 'footer.weekends': 'Sat–Sun 8am–9pm',
+    'footer.coffee': 'Coffee', 'footer.tea': 'Tea & Matcha', 'footer.pastries': 'Pastries', 'footer.food': 'Food',
+    'footer.story': 'Our Story', 'footer.wholesale': 'Wholesale', 'footer.careers': 'Careers', 'footer.press': 'Press',
+    'footer.copy': '© 2026 Brûlée Coffee Ltd. All rights reserved.', 'footer.privacy': 'Privacy', 'footer.terms': 'Terms',
+    'cart.title': 'Your Order', 'cart.empty': 'Your cart is empty.<br>Add items from the menu.',
+    'cart.total': 'Total', 'cart.name': 'Your name', 'cart.email': 'Your email',
+    'cart.address': 'Delivery address', 'cart.phone': 'Phone number',
+    'cart.place': 'Place Order', 'cart.sending': 'Sending…',
+    'toast.success': 'Order placed! Check your email for confirmation.',
+    'ticker': ['Specialty Single-Origin Espresso','Free Delivery Over £25','Ethically Sourced Beans','Open 7AM – 9PM Daily','Freshly Baked Every Morning','30-Minute Delivery Guarantee','Oat, Almond & Soy Available','Carbon-Neutral Packaging'],
+    'menu.badge.new': 'New', 'menu.badge.seasonal': 'Seasonal',
+    'slot.asap': 'ASAP',
+  },
+  tr: {
+    'nav.menu': 'Menü', 'nav.delivery': 'Teslimat', 'nav.about': 'Hikayemiz', 'nav.visit': 'Ziyaret Et', 'nav.cart': 'Sepet',
+    'hero.tag': 'Kur. 2018 · Özel Kahve',
+    'hero.title': 'Kahve, olması<br><em>gerektiği</em><br>gibi.',
+    'hero.subtitle': 'Tek kökenli espresso, el yapımı hamur işleri ve günün gürültüsünde bir mola gibi hissettiren bir mekan. Artık kapınıza teslim ediyoruz.',
+    'hero.cta1': 'Menüyü Keşfet', 'hero.cta2': 'Teslimat Siparişi →',
+    'hero.stat1': 'Kaynak çiftlik', 'hero.stat2': 'Günlük fincan', 'hero.stat3': 'Ort. teslimat süresi',
+    'hero.scroll': 'Kaydır',
+    'menu.tag': 'Ne sunuyoruz', 'menu.title': 'Her fincanda <em>ustalık</em>',
+    'menu.add': 'Sepete ekle', 'menu.added': 'Eklendi ✓',
+    'delivery.tag': 'Kapıdan kapıya', 'delivery.title': 'Brûlée,<br><em>teslim edildi</em>.',
+    'delivery.lead': 'Kafe deneyimi kapımızda durmamalı. Kahveniz, termal yalıtımlı ambalajda taşınır ve bizden ayrılmadan birkaç dakika önce doldurulur.',
+    'delivery.panel.title': 'Sipariş ver', 'delivery.panel.note': 'Teslimat saati seçin ve sepeti açarak siparişinizi tamamlayın.',
+    'delivery.panel.btn': 'Sepeti aç & sipariş ver →',
+    'delivery.f1.title': '30 dakika garantisi', 'delivery.f1.body': 'Siparişinizden itibaren 5 dakika içinde gönderim yapıyoruz. Geç kalırsak bir sonraki içeceğiniz bizden.',
+    'delivery.f2.title': 'Termal koruma', 'delivery.f2.body': 'Çift cidarlı vakumlu termos bardaklar, kahvenizi 45 dakika boyunca servis sıcaklığında tutar.',
+    'delivery.f3.title': 'Sıfır atık ambalaj', 'delivery.f3.body': 'Tam kompostlanabilir torbalar, bitki bazlı bardaklar ve aylık ambalaj geri dönüşüm hizmeti.',
+    'delivery.f4.title': 'Canlı sipariş takibi', 'delivery.f4.body': 'Siparişiniz hazırlandığı andan kapınıza ulaştığı ana kadar gerçek zamanlı harita güncellemeleri.',
+    'about.tag': 'Hikayemiz', 'about.title': 'İnançla kurulmuş bir <em>kafe</em>',
+    'about.quote': '"Kahve, çiftçi, kavurucusu ve baristası arasındaki bir konuşmadır. Biz sadece son bölümüz."',
+    'about.body': 'Brûlée, <strong>mükemmel kahvenin bir lüks olmadığı</strong> inancıyla kuruldu — her halkaya özen gösterdiğinizde ortaya çıkan şeydir. Etiyopya, Kolombiya ve Guatemala\'daki on iki çiftlikle doğrudan çalışıyoruz.<br><br>Baş kavurucumuz <strong>Mia Takahari</strong>, Tokyo ve Melbourne\'da eğitim gördükten sonra 2017\'de aramıza katıldı. Her kavurma profili haftalarca geliştirilir, ardından altı kişilik tadım paneli tarafından onaylanır.<br><br>Kafe, kahvenin arkasında kaybolmak üzere tasarlandı — yüksek ses yok, sadece ışık, sıcaklık ve güzel bir şeyin kokusu.',
+    'about.v1.title': 'Doğrudan ticaret', 'about.v1.body': 'Her çiftlik ortağı Fair Trade primlerinin üzerinde ödeme alır ve fiyatlarımızı yıllık olarak yayınlarız.',
+    'about.v2.title': 'Mevsimsel kavurma', 'about.v2.body': 'Espresso harmanimizi üç ayda bir döndürüyor, her hasat geldiğinde en iyisini sunuyoruz.',
+    'about.v3.title': 'Geçim ücreti', 'about.v3.body': 'Tüm çalışanlar Londra Geçim Ücreti\'nin en az %125\'ini kazanır, birinci yıldan itibaren kâr paylaşımı yapılır.',
+    'about.v4.title': '2026\'ya kadar net sıfır', 'about.v4.body': 'Elektrikli teslimat filosu, %100 yenilenebilir enerji ve kaçınılmaz emisyonlar için denge programı.',
+    'testimonials.tag': 'Müşteriler ne diyor', 'testimonials.title': 'Kahvenin <em>konuşmasına</em> izin veriyoruz',
+    'review1.text': '"Geçen Salı içtiğim flat white, diğer tüm flat white\'ları mahvetti. Bu hafta dört kez geldim ve hiç pişman değilim."', 'review1.author': '— Sophie A., Doğrulanmış Sipariş',
+    'review2.text': '"Teslimat, onay e-postasını bitirmeden geldi. Kahve hâlâ mükemmel sıcaklıktaydı. Bu gerçekten olağanüstü lojistik."', 'review2.author': '— Marcus L., Teslimat Müşterisi',
+    'review3.text': '"Yirmi yıldır sabah kahvesiyim. Brûlée\'nin portakal çiçeği lattesi tüm tercihlerimi sorgulatmamı sağladı."', 'review3.author': '— Priya M., Düzenli Misafir',
+    'footer.tagline': 'Sabahların daha iyi olması gerektiğine inanan insanlar için özenle hazırlanmış özel kahve ve kafe.',
+    'footer.visit': 'Ziyaret', 'footer.menu': 'Menü', 'footer.company': 'Şirket',
+    'footer.weekdays': 'Pzt–Cum 7:00–19:00', 'footer.weekends': 'Cmt–Paz 8:00–21:00',
+    'footer.coffee': 'Kahve', 'footer.tea': 'Çay & Matcha', 'footer.pastries': 'Hamur İşleri', 'footer.food': 'Yiyecek',
+    'footer.story': 'Hikayemiz', 'footer.wholesale': 'Toptan Satış', 'footer.careers': 'Kariyer', 'footer.press': 'Basın',
+    'footer.copy': '© 2026 Brûlée Coffee Ltd. Tüm hakları saklıdır.', 'footer.privacy': 'Gizlilik', 'footer.terms': 'Koşullar',
+    'cart.title': 'Siparişiniz', 'cart.empty': 'Sepetiniz boş.<br>Menüden ürün ekleyin.',
+    'cart.total': 'Toplam', 'cart.name': 'Adınız', 'cart.email': 'E-posta adresiniz',
+    'cart.address': 'Teslimat adresi', 'cart.phone': 'Telefon numarası',
+    'cart.place': 'Sipariş Ver', 'cart.sending': 'Gönderiliyor…',
+    'toast.success': 'Sipariş verildi! Onay e-postanızı kontrol edin.',
+    'ticker': ['Özel Tek Kökenli Espresso','£25 Üzeri Ücretsiz Teslimat','Etik Kaynaklı Kahveler','Her Gün 7:00–21:00 Açık','Her Sabah Taze Pişmiş','30 Dakika Teslimat Garantisi','Yulaf, Badem & Soya Sütü Mevcut','Karbonsuz Ambalaj'],
+    'menu.badge.new': 'Yeni', 'menu.badge.seasonal': 'Mevsimlik',
+    'slot.asap': 'Hemen',
+  },
+  tk: {
+    'nav.menu': 'Menýu', 'nav.delivery': 'Eltip bermek', 'nav.about': 'Biziň barada', 'nav.visit': 'Baryp gör', 'nav.cart': 'Sebet',
+    'hero.tag': 'Esaslandyryldy 2018 · Ýörite Kofe',
+    'hero.title': 'Kofe, islenin<br><em>ýaly</em><br>bolmaly.',
+    'hero.subtitle': 'Bir çeşmeli espresso, el bilen ýasalan çörek önümleri we günüň alňasawlygynda dynç almak ýaly duýgy berýän ýer. Indi gapyňyza eltip berýäris.',
+    'hero.cta1': 'Menýuny Gör', 'hero.cta2': 'Sargyt Et →',
+    'hero.stat1': 'Çeşme ferma', 'hero.stat2': 'Günde käse', 'hero.stat3': 'Ort. eltip beriş wagty',
+    'hero.scroll': 'Süýşür',
+    'menu.tag': 'Näme hödürleýäris', 'menu.title': 'Her käsede <em>ussatlyk</em>',
+    'menu.add': 'Sebede goş', 'menu.added': 'Goşuldy ✓',
+    'delivery.tag': 'Gapydan gapa', 'delivery.title': 'Brûlée,<br><em>eltildi</em>.',
+    'delivery.lead': 'Kafe tejribesi biziň gapymyzda durmamalydyr. Kofeňiz termal ýyly gaplamada daşalýar we bizden çykmakdan birnäçe minut öň guýulýar.',
+    'delivery.panel.title': 'Sargyt ber', 'delivery.panel.note': 'Eltip beriş wagty saýlaň we sebedi açyp sargydyňyzy tamamlaň.',
+    'delivery.panel.btn': 'Sebedi aç & sargyt et →',
+    'delivery.f1.title': '30 minут kepilligi', 'delivery.f1.body': 'Sargytyňyzdan 5 minut içinde ugradýarys. Gijä galsa, indiki içgiňiz bizden.',
+    'delivery.f2.title': 'Termal gorag', 'delivery.f2.body': 'Goşa diwarly wakuum käseler kofeňizi 45 minut hyzmat temperaturasynda saklaýar.',
+    'delivery.f3.title': 'Galyndysyz gaplama', 'delivery.f3.body': 'Doly kompostlanylýan haltalar, ösümlik esasly käseler we aýlyk gaplama yzyna gaýtaryş hizmeti.',
+    'delivery.f4.title': 'Göni sargyt yzarlamak', 'delivery.f4.body': 'Sargytyňyz taýýarlanan pursatdan gapyňyza ýetýänçä hakyky wagtly karta täzelenmeler.',
+    'about.tag': 'Biziň barada', 'about.title': 'Ynanç bilen döredilen <em>kafe</em>',
+    'about.quote': '"Kofe daýhan, gaýnadyjy we barista arasyndaky söhbetdeşlikdir. Biz diňe soňky bölümdirs."',
+    'about.body': 'Brûlée, <strong>ajaýyp kofeňiň lüks däldigine</strong> ynanç bilen döredildi — zynjyryň her halkasyna üns berseňiz bolýan zadydyr. Efiopiýa, Kolumbiýa we Gwatemalada on iki ferma bilen göni işleşýäris.<br><br>Baş gaýnadyjymyz <strong>Mia Takahari</strong> Tokioda we Melburnda bilim alyp 2017-nji ýylda aramyza goşuldy. Her gaýnatma profili hepteler boýunca işlenilip taýýarlanylýar.<br><br>Kafe kofäniň arkasynda ýitip gitmek üçin döredildi — ýokary ses ýok, diňe ýagtylyk, ýylylyk we gowy bir zadyň ysy.',
+    'about.v1.title': 'Göni söwda', 'about.v1.body': 'Her ferma hyzmatdaşy Fair Trade baýraklaryndan ýokary töleg alýar we nyrhlarymyzy ýyllyk çap edýäris.',
+    'about.v2.title': 'Möwsümleýin gaýnatmak', 'about.v2.body': 'Espresso garyndymyzy çärýekde bir gezek çalşyrýarys, her hasyl gelende iň gowusyny hödürleýäris.',
+    'about.v3.title': 'Geçimilik aýlyk', 'about.v3.body': 'Ähli işgärler London Geçimilik Aýlygynyň azyndan 125%-ni gazanýar, birinji ýyldan girdeji paýlaşymy edilýär.',
+    'about.v4.title': '2026-a çenli nol zyýan', 'about.v4.body': 'Elektrikli eltip beriş parky, 100% gaýtadan dikeldilýän energiýa we zerur emissiýalar üçin deňagramlylyk programmasy.',
+    'testimonials.tag': 'Müşderiler näme diýýär', 'testimonials.title': 'Kofeýe <em>gepletmäge</em> rugsat berýäris',
+    'review1.text': '"Geçen sişenbe içen flat white-ym beýleki ähli flat white-lary mahrum etdi. Bu hepde dört gezek geldim we hiç puşman däl."', 'review1.author': '— Sophie A., Tassyklanan Sargyt',
+    'review2.text': '"Eltip beriş tassyklama e-poçtasyny gutarmazdan geldi. Kofe entek ajaýyp temperatura bardy. Bu hakykatdan deň-duş logistika."', 'review2.author': '— Marcus L., Eltip beriş Müşderi',
+    'review3.text': '"Ýigrimi ýyl bäri irdenki kofe içýärin. Brûlée-nyň pyrtykal gül lattesi ähli saýlawlarymi sorag astyna aldy."', 'review3.author': '— Priya M., Hemişelik Myhman',
+    'footer.tagline': 'Ertiriň has gowy bolmalydygyna ynanan adamlar üçin özenle taýýarlanan ýörite kofe we kafe.',
+    'footer.visit': 'Baryp gör', 'footer.menu': 'Menýu', 'footer.company': 'Kompaniýa',
+    'footer.weekdays': 'Duş–Ann 7:00–19:00', 'footer.weekends': 'Şen–Ýek 8:00–21:00',
+    'footer.coffee': 'Kofe', 'footer.tea': 'Çaý & Matcha', 'footer.pastries': 'Çörek önümleri', 'footer.food': 'Iýmit',
+    'footer.story': 'Biziň barada', 'footer.wholesale': 'Lomaý söwda', 'footer.careers': 'Iş', 'footer.press': 'Metbugat',
+    'footer.copy': '© 2026 Brûlée Coffee Ltd. Ähli hukuklar goralydy.', 'footer.privacy': 'Gizlinlik', 'footer.terms': 'Şertler',
+    'cart.title': 'Sargytyňyz', 'cart.empty': 'Sebetiňiz boş.<br>Menýudan haryt goşuň.',
+    'cart.total': 'Jemi', 'cart.name': 'Adyňyz', 'cart.email': 'E-poçta salgyňyz',
+    'cart.address': 'Eltip beriş salgysy', 'cart.phone': 'Telefon belgisi',
+    'cart.place': 'Sargyt Ber', 'cart.sending': 'Ugradylýar…',
+    'toast.success': 'Sargyt berildi! Tassyklama e-poçtaňyzy barlаň.',
+    'ticker': ['Ýörite Bir Çeşmeli Espresso','£25 Üstünde Mugt Eltip Bermek','Etiki Çeşmeli Kofe','Her Gün 7:00–21:00 Açyk','Her Irden Täze Bişirildi','30 Minut Eltip Beriş Kepilligi','Ýuwurt, Badam & Soja Süýdi Bar','Karbonsyz Gaplama'],
+    'menu.badge.new': 'Täze', 'menu.badge.seasonal': 'Möwsümleýin',
+    'slot.asap': 'Derrew',
+  }
+};
+
+/* ═══════════════════════════════════════════════
+   MENU DATA
+═══════════════════════════════════════════════ */
+const menuItems = [
+  { id: 1, icon: '☕', price: 3.80, badge: null,
+    name: { en: 'Signature Flat White', tr: 'İmza Flat White', tk: 'Gol Çekilen Flat White' },
+    desc: { en: 'Double ristretto pulled from our rotating single-origin, velvety microfoam, the perfect 5oz ratio.',
+            tr: 'Dönen tek kökenli kahvemizden çekilen çift ristretto, kadifemsi microfoam, mükemmel 5oz oranı.',
+            tk: 'Öwrümli bir çeşmeli kofeden alnan goşa ristretto, mahmal mikrokopuk, kämil 5oz gatnaşygy.' } },
+  { id: 2, icon: '🫧', price: 4.50, badge: 'new',
+    name: { en: 'Sparkling Cold Brew', tr: 'Köpüklü Soğuk Demleme', tk: 'Köpükli Sowuk Demleme' },
+    desc: { en: '18-hour cold brew concentrate, light effervescence, a twist of blood orange peel.',
+            tr: '18 saatlik soğuk demleme konsantresi, hafif köpüklülük, kan portakalı kabuğu.',
+            tk: '18 saatlyk sowuk demleme konsentrati, ýeňil köpüklülük, gan apelsiniň gabygy.' } },
+  { id: 3, icon: '🍵', price: 4.20, badge: null,
+    name: { en: 'Ceremonial Matcha', tr: 'Tören Matcha', tk: 'Dabaraly Matcha' },
+    desc: { en: 'First-flush Uji matcha, whisked to order, served over oat milk or with our house almond blend.',
+            tr: 'İlk hasat Uji matcha, siparişe göre çırpılır, yulaf sütü veya özel badem karışımımızla servis edilir.',
+            tk: 'Ilkinji hasyl Uji matcha, sargyt üçin garmak, ýuwurt süýdi ýa-da öý badam garyndymyz bilen hyzmat edildi.' } },
+  { id: 4, icon: '🥐', price: 3.50, badge: null,
+    name: { en: 'Kouign-Amann', tr: 'Kouign-Amann', tk: 'Kouign-Amann' },
+    desc: { en: 'Slow-laminated dough, caramelised crust, flaked salt. Baked every morning at 6am.',
+            tr: 'Yavaşça katmanlanan hamur, karamelize kabuk, pul tuz. Her sabah saat 6\'da pişirilir.',
+            tk: 'Haýal laminatlanan hamyr, karamelleşdirilen gatlak, ýapgyt duz. Her irden sagat 6-da bişirildi.' } },
+  { id: 5, icon: '🍊', price: 4.80, badge: 'seasonal',
+    name: { en: 'Orange Blossom Latte', tr: 'Portakal Çiçeği Latte', tk: 'Apelsin Güli Latte' },
+    desc: { en: 'Our seasonal house syrup, steamed oat milk, a dusting of edible rose petals.',
+            tr: 'Mevsimlik özel şurubumuz, buharda ısıtılmış yulaf sütü, yenilebilir gül yaprakları.',
+            tk: 'Möwsümleýin öý şiresi, bug bilen gyzdyrylan ýuwurt süýdi, iýip boljak gül ýapraklary.' } },
+  { id: 6, icon: '🧆', price: 7.50, badge: null,
+    name: { en: 'Avocado Tartine', tr: 'Avokado Tartine', tk: 'Awokado Tartine' },
+    desc: { en: 'Sourdough from our partner bakery, cultured butter, heirloom tomato, chilli flakes, lemon oil.',
+            tr: 'Ortak fırınımızdan ekşi maya ekmeği, kültürlü tereyağı, ata tohumu domates, biber pulu, limon yağı.',
+            tk: 'Hyzmatdaş çörekeýimizdäki hamyrturşy çörek, kulturaly ýag, nesil pomidor, burç ýapraklary, limon ýagy.' } },
+];
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let currentLang = 'en';
+let cart = {}; // { itemId: qty }
+
+/* ═══════════════════════════════════════════════
+   LANGUAGE SYSTEM
+═══════════════════════════════════════════════ */
+function t(key) { return i18n[currentLang][key] || i18n.en[key] || key; }
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent === lang.toUpperCase()));
+  applyTranslations();
+  renderMenu();
+  renderDeliveryFeatures();
+  renderValues();
+  renderReviews();
+  renderTicker();
+  renderTimeSlots();
+  updateCartUI();
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    el.innerHTML = t(key);
+  });
+  // Placeholders
+  const fields = [
+    ['customerName', 'cart.name'], ['customerEmail', 'cart.email'],
+    ['customerAddress', 'cart.address'], ['customerPhone', 'cart.phone']
+  ];
+  fields.forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.placeholder = t(key);
+  });
+  document.getElementById('cartTitle').textContent = t('cart.title');
+  document.getElementById('orderBtnText').textContent = t('cart.place');
+  document.getElementById('totalLabel').textContent = t('cart.total');
+  document.getElementById('cartEmptyText').innerHTML = t('cart.empty');
+  document.getElementById('toastMsg').textContent = t('toast.success');
+}
+
+/* ═══════════════════════════════════════════════
+   TICKER
+═══════════════════════════════════════════════ */
+function renderTicker() {
+  const items = t('ticker');
+  const track = document.getElementById('tickerTrack');
+  let html = '';
+  for (let i = 0; i < 2; i++) {
+    items.forEach(txt => {
+      html += `<div class="ticker-item"><span class="ticker-dot"></span>${txt}</div>`;
+    });
+  }
+  track.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════
+   MENU
+═══════════════════════════════════════════════ */
+function renderMenu() {
+  const grid = document.getElementById('menuGrid');
+  grid.innerHTML = menuItems.map(item => {
+    const inCart = cart[item.id] > 0;
+    const badgeHtml = item.badge
+      ? `<div class="menu-card-badge">${t('menu.badge.' + item.badge)}</div>` : '';
+    return `
+    <div class="menu-card ${inCart ? 'in-cart' : ''}" id="card-${item.id}">
+      ${badgeHtml}
+      <span class="menu-card-icon">${item.icon}</span>
+      <div class="menu-card-name">${item.name[currentLang] || item.name.en}</div>
+      <p class="menu-card-desc">${item.desc[currentLang] || item.desc.en}</p>
+      <div class="menu-card-footer">
+        <div class="menu-card-price">from £${item.price.toFixed(2)}</div>
+        <button class="add-to-cart-btn" id="addbtn-${item.id}" onclick="addToCart(${item.id}, event)">
+          ${inCart ? t('menu.added') : t('menu.add')}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   DELIVERY FEATURES
+═══════════════════════════════════════════════ */
+function renderDeliveryFeatures() {
+  const container = document.getElementById('deliveryFeatures');
+  container.innerHTML = [1,2,3,4].map(n => `
+    <div class="delivery-feature">
+      <div class="feature-num">0${n}</div>
+      <div class="feature-text">
+        <h4>${t('delivery.f'+n+'.title')}</h4>
+        <p>${t('delivery.f'+n+'.body')}</p>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   TIME SLOTS
+═══════════════════════════════════════════════ */
+let selectedSlot = t('slot.asap');
+function renderTimeSlots() {
+  const slots = [t('slot.asap'), '10:00–10:30','10:30–11:00','11:00–11:30','11:30–12:00','12:00–12:30'];
+  const container = document.getElementById('timeSlots');
+  container.innerHTML = slots.map(s => `
+    <div class="time-slot ${s === selectedSlot ? 'active' : ''}" onclick="selectSlot('${s}', this)">${s}</div>
+  `).join('');
+}
+function selectSlot(slot, el) {
+  selectedSlot = slot;
+  document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ═══════════════════════════════════════════════
+   VALUES & REVIEWS
+═══════════════════════════════════════════════ */
+function renderValues() {
+  document.getElementById('valuesGrid').innerHTML = [1,2,3,4].map(n => `
+    <div class="value">
+      <h4>${t('about.v'+n+'.title')}</h4>
+      <p>${t('about.v'+n+'.body')}</p>
+    </div>`).join('');
+}
+
+function renderReviews() {
+  document.getElementById('reviewsGrid').innerHTML = [1,2,3].map(n => `
+    <div class="review">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-text">${t('review'+n+'.text')}</p>
+      <div class="review-author">${t('review'+n+'.author')}</div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   CART
+═══════════════════════════════════════════════ */
+function addToCart(id, e) {
+  e.stopPropagation();
+  cart[id] = (cart[id] || 0) + 1;
+  updateCartUI();
+  const btn = document.getElementById('addbtn-' + id);
+  const card = document.getElementById('card-' + id);
+  if (btn) btn.textContent = t('menu.added');
+  if (card) card.classList.add('in-cart');
+  const countEl = document.getElementById('cartCount');
+  countEl.classList.remove('bump');
+  void countEl.offsetWidth;
+  countEl.classList.add('bump');
+}
+
+function updateCartUI() {
+  const total = cartTotal();
+  const count = Object.values(cart).reduce((s, v) => s + v, 0);
+  document.getElementById('cartCount').textContent = count;
+  document.getElementById('cartTotal').textContent = '£' + total.toFixed(2);
+  renderCartItems();
+  const footer = document.getElementById('cartFooter');
+  footer.style.display = count > 0 ? 'block' : 'none';
+  const emptyDiv = document.querySelector('.cart-empty');
+  if (emptyDiv) {
+    emptyDiv.style.display = count > 0 ? 'none' : 'flex';
+    emptyDiv.style.flexDirection = 'column';
+    emptyDiv.style.alignItems = 'center';
+  }
+}
+
+function cartTotal() {
+  return Object.entries(cart).reduce((sum, [id, qty]) => {
+    const item = menuItems.find(m => m.id == id);
+    return sum + (item ? item.price * qty : 0);
+  }, 0);
+}
+
+function renderCartItems() {
+  const container = document.getElementById('cartItems');
+  const items = Object.entries(cart).filter(([,q]) => q > 0);
+  if (items.length === 0) {
+    container.innerHTML = `<div class="cart-empty" style="display:flex;flex-direction:column;align-items:center"><span class="cart-empty-icon">☕</span><p id="cartEmptyText">${t('cart.empty')}</p></div>`;
+    return;
+  }
+  container.innerHTML = items.map(([id, qty]) => {
+    const item = menuItems.find(m => m.id == id);
+    if (!item) return '';
+    return `
+    <div class="cart-item">
+      <div class="cart-item-icon">${item.icon}</div>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name[currentLang] || item.name.en}</div>
+        <div class="cart-item-price">£${(item.price * qty).toFixed(2)}</div>
+      </div>
+      <div class="cart-item-qty">
+        <button class="qty-btn" onclick="changeQty(${id}, -1)">−</button>
+        <span class="qty-num">${qty}</span>
+        <button class="qty-btn" onclick="changeQty(${id}, 1)">+</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function changeQty(id, delta) {
+  cart[id] = Math.max(0, (cart[id] || 0) + delta);
+  if (cart[id] === 0) delete cart[id];
+  // Update card state
+  const card = document.getElementById('card-' + id);
+  const btn = document.getElementById('addbtn-' + id);
+  if (!cart[id]) {
+    if (card) card.classList.remove('in-cart');
+    if (btn) btn.textContent = t('menu.add');
+  }
+  updateCartUI();
+}
+
+function openCart() {
+  document.getElementById('cartDrawer').classList.add('open');
+  document.getElementById('cartOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  updateCartUI();
+}
+function closeCart() {
+  document.getElementById('cartDrawer').classList.remove('open');
+  document.getElementById('cartOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ═══════════════════════════════════════════════
+   ORDER / EMAILJS
+═══════════════════════════════════════════════ */
+function placeOrder() {
+  const name    = document.getElementById('customerName').value.trim();
+  const email   = document.getElementById('customerEmail').value.trim();
+  const address = document.getElementById('customerAddress').value.trim();
+  const phone   = document.getElementById('customerPhone').value.trim();
+  if (!name || !email || !address) {
+    const req = currentLang === 'tr' ? 'Lütfen ad, e-posta ve adres girin.' :
+                currentLang === 'tk' ? 'Adyňyzy, e-poçtaňyzy we salgyňyzy giriziň.' :
+                'Please fill in your name, email and address.';
+    alert(req); return;
+  }
+  const orderLines = Object.entries(cart).map(([id, qty]) => {
+    const item = menuItems.find(m => m.id == id);
+    return `${item.icon} ${item.name.en} × ${qty} = £${(item.price * qty).toFixed(2)}`;
+  }).join('\n');
+  const total = cartTotal();
+  const btn = document.getElementById('placeOrderBtn');
+  btn.disabled = true;
+  document.getElementById('orderBtnText').textContent = t('cart.sending');
+
+  // EmailJS send
+  if (EMAILJS_SERVICE_ID !== 'YOUR_SERVICE_ID') {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      customer_name:    name,
+      customer_email:   email,
+      customer_address: address,
+      customer_phone:   phone || '—',
+      order_items:      orderLines,
+      order_total:      '£' + total.toFixed(2),
+      delivery_slot:    selectedSlot,
+    })
+    .then(() => orderSuccess(btn))
+    .catch(err => {
+      console.error('EmailJS error:', err);
+      btn.disabled = false;
+      document.getElementById('orderBtnText').textContent = t('cart.place');
+      alert('Could not send email. Check your EmailJS settings.');
+    });
+  } else {
+    // Demo mode — simulate success after 1.2s
+    setTimeout(() => orderSuccess(btn), 1200);
+  }
+}
+
+function orderSuccess(btn) {
+  cart = {};
+  closeCart();
+  renderMenu();
+  updateCartUI();
+  document.getElementById('customerName').value = '';
+  document.getElementById('customerEmail').value = '';
+  document.getElementById('customerAddress').value = '';
+  document.getElementById('customerPhone').value = '';
+  btn.disabled = false;
+  document.getElementById('orderBtnText').textContent = t('cart.place');
+  showToast();
+}
+
+function showToast() {
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+/* ═══════════════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════════════ */
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.08 });
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  renderTicker();
+  renderMenu();
+  renderDeliveryFeatures();
+  renderValues();
+  renderReviews();
+  renderTimeSlots();
+  applyTranslations();
+
+  setTimeout(() => {
+    document.querySelectorAll('.menu-card, .review, .delivery-feature, .value').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      revealObserver.observe(el);
+    });
+  }, 100);
+});
+</script>
+</body>
+</html>
